@@ -11,15 +11,46 @@
       </default>
     </input>
   </fieldset>
+  <!-- Base Search: Extract metadata and convert timestamps -->
+  <search id="base_search">
+    <query>index="cbtc-messages"
+| spath input=_raw path=metadata.messageType output=messageType
+| spath input=_raw path=metadata.originator output=originator
+| spath input=_raw path=metadata.messageTime output=messageTime
+| eval epoch_messageTime=strptime(messageTime, "%Y-%m-%dT%H:%M:%S.%6NZ")</query>
+    <earliest>$time.earliest$</earliest>
+    <latest>$time.latest$</latest>
+  </search>
+  <!-- Base Search: Unique Message Types -->
+  <search id="base_search_message_types">
+    <query>base_search | dedup messageType | table messageType</query>
+  </search>
+  <!-- Base Search: Unique Originators -->
+  <search id="base_search_originators">
+    <query>base_search | dedup originator | table originator</query>
+  </search>
   <row>
     <panel>
       <title>Available Message Types</title>
       <table>
-        <search>
-          <query>index="cbtc_messages"
-| spath input=_raw path=metadata.messageType output=messageType | dedup messageType | table messageType</query>
-          <earliest>-15m</earliest>
-          <latest>now</latest>
+        <search base="base_search_message_types">
+          <query></query>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Available Originators</title>
+      <table>
+        <search base="base_search_originators">
+          <query></query>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="count">20</option>
@@ -34,6 +65,36 @@
   </row>
   <row>
     <panel>
+      <title>System Data</title>
+      <table>
+        <search base="base_search">
+          <query>| search messageType="System Data"
+| fields _time messageTime messageType originator _raw</query>
+          <sampleRatio>1</sampleRatio>
+          <refresh>10m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Diagnostic Data</title>
+      <table>
+        <search base="base_search">
+          <query>| search messageType="Diagnostic Data"
+| fields _time messageTime messageType originator _raw</query>
+          <sampleRatio>1</sampleRatio>
+          <refresh>10m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
       <title>Messages (ats_prod and iams_prod)</title>
       <input type="multiselect" token="messageTypes" searchWhenChanged="true">
         <label>messageType(s)</label>
@@ -43,12 +104,8 @@
         <suffix>)</suffix>
         <initialValue>*</initialValue>
         <delimiter> </delimiter>
-        <search>
-          <query>index="cbtc-messages"
-| spath input=_raw path=metadata.messageType output=messageType
-| dedup messageType | table messageType</query>
-          <earliest>$time.earliest$</earliest>
-          <latest>$time.latest$</latest>
+        <search base="base_search_message_types">
+          <query></query>
         </search>
         <fieldForLabel>messageType</fieldForLabel>
         <fieldForValue>messageType</fieldForValue>
@@ -63,12 +120,8 @@
         <suffix>)</suffix>
         <initialValue>*</initialValue>
         <delimiter> </delimiter>
-        <search>
-          <query>index="cbtc-messages"
-| spath input=_raw path=metadata.originator output=originator
-| dedup originator | table originator</query>
-          <earliest>$time.earliest$</earliest>
-          <latest>$time.latest$</latest>
+        <search base="base_search_originators">
+          <query></query>
         </search>
         <fieldForLabel>originator</fieldForLabel>
         <fieldForValue>originator</fieldForValue>
@@ -76,17 +129,9 @@
         <valueSuffix>"</valueSuffix>
       </input>
       <table>
-        <search>
-          <query>index="cbtc_messages" NOT icsbplantevent
-| spath input=_raw path=metadata.messageTime output=messageTime
-| spath input=_raw path=metadata.originator output=originator
-
-| eval epoch_messageTime= strptime(messageTime, "%Y-%m-%dT%H:%M:%S.%6NZ")
-
-| search (messageType IN $messageTypes$) AND (originator IN $originators$)
-| fields _time messageTime messageType originator</query>
-          <earliest>$time.earliest$</earliest>
-          <latest>$time.latest$</latest>
+        <search base="base_search">
+          <query>| search (messageType IN $messageTypes$) AND (originator IN $originators$)
+| fields _time messageTime messageType originator _raw</query>
           <sampleRatio>1</sampleRatio>
           <refresh>10m</refresh>
           <refreshType>delay</refreshType>
@@ -98,7 +143,7 @@
   </row>
   <row>
     <panel>
-      <title>Raw Messages (ats_prod and iams_prod)</title>
+      <title>Raw Messages (iams_prod)</title>
       <input type="text" token="string" searchWhenChanged="true">
         <label>Search by Text (to exclude prefix with "NOT [string]")</label>
         <default>*</default>
@@ -107,11 +152,9 @@
         <suffix>)</suffix>
       </input>
       <event>
-        <search>
-          <query>index="cbtc_messages" $string$ sourcetype="_json"
+        <search base="base_search">
+          <query>| search $string$ sourcetype="_json"
 | fields _time _raw</query>
-          <earliest>$time.earliest$</earliest>
-          <latest>$time.latest$</latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="count">5</option>
