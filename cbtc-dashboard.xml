@@ -1,0 +1,132 @@
+<!-- [[file:~/workspace/dev/splunk-dashboard-alert-devs/cbtc-dashboard/cbtc-dashboard-impl.org::+begin_src xml :tangle ./cbtc-dashboard.xml][No heading:1]] -->
+<form version="1.1" theme="dark">
+  <label>ats_iams_data</label>
+  <description>Messages received from ats_prod and iams_prod</description>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="time" token="time" searchWhenChanged="true">
+      <label>Time (Selector for all Panels)</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Available Message Types</title>
+      <table>
+        <search>
+          <query>index="cbtc_messages"
+| spath input=_raw path=metadata.messageType output=messageType | dedup messageType | table messageType</query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Messages (ats_prod and iams_prod)</title>
+      <input type="multiselect" token="messageTypes" searchWhenChanged="true">
+        <label>messageType(s)</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
+        <initialValue>*</initialValue>
+        <delimiter> </delimiter>
+        <search>
+          <query>index="cbtc-messages"
+| spath input=_raw path=metadata.messageType output=messageType
+| dedup messageType | table messageType</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <fieldForLabel>messageType</fieldForLabel>
+        <fieldForValue>messageType</fieldForValue>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+      </input>
+      <input type="multiselect" token="originators" searchWhenChanged="true">
+        <label>originator(s)</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
+        <initialValue>*</initialValue>
+        <delimiter> </delimiter>
+        <search>
+          <query>index="cbtc-messages"
+| spath input=_raw path=metadata.originator output=originator
+| dedup originator | table originator</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <fieldForLabel>originator</fieldForLabel>
+        <fieldForValue>originator</fieldForValue>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+      </input>
+      <table>
+        <search>
+          <query>index="cbtc_messages" NOT icsbplantevent
+| spath input=_raw path=metadata.messageTime output=messageTime
+| spath input=_raw path=metadata.originator output=originator
+
+| eval epoch_messageTime= strptime(messageTime, "%Y-%m-%dT%H:%M:%S.%6NZ")
+
+| search (messageType IN $messageTypes$) AND (originator IN $originators$)
+| fields _time messageTime messageType originator</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+          <refresh>10m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Raw Messages (ats_prod and iams_prod)</title>
+      <input type="text" token="string" searchWhenChanged="true">
+        <label>Search by Text (to exclude prefix with "NOT [string]")</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
+      </input>
+      <event>
+        <search>
+          <query>index="cbtc_messages" $string$ sourcetype="_json"
+| fields _time _raw</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">0</option>
+        <option name="maxLines">10</option>
+        <option name="raw.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">none</option>
+        <option name="table.sortDirection">asc</option>
+        <option name="table.wrap">0</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+</form>
+<!-- No heading:1 ends here -->
