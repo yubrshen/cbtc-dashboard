@@ -26,3 +26,16 @@ This project develops Splunk dashboards in Simple XML format for CBTC Dashboard.
 - Document all changes
 - Keep documentation high-level with minimal noise
 - Focus on what changed and why, not excessive detail
+
+## Known Limitations
+
+### Simple XML Constraints
+- **Base searches cannot reference other base searches** - Cannot use syntax like 
+`<query id="a_derived_base_search" base="base_search">
+| dedup ...</query> `
+
+in a search definition. Each search must be fully self-contained or reference the base search directly in panel query strings.
+
+- `<sampleRatio>` and refresh settings (`<refresh>`, `<refreshType>`) cannot be used in table panels that reference base searches. These options are illegal in that context and must be removed.
+- Panels with dynamic filters/inputs should omit these options to avoid validation errors.
+- When deduplicating or filtering base search results, inline the operations in each panel's query string rather than creating derived base searches.

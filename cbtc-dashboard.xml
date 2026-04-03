@@ -13,7 +13,7 @@
   </fieldset>
   <!-- Base Search: Extract metadata and convert timestamps -->
   <search id="base_search">
-    <query>index="cbtc-messages"
+    <query>index="cbtc_messages"
 | spath input=_raw path=metadata.messageType output=messageType
 | spath input=_raw path=metadata.originator output=originator
 | spath input=_raw path=metadata.messageTime output=messageTime
@@ -21,21 +21,12 @@
     <earliest>$time.earliest$</earliest>
     <latest>$time.latest$</latest>
   </search>
-  <!-- Base Search: Unique Message Types -->
-  <search id="base_search_message_types">
-    <query>base_search | dedup messageType | table messageType</query>
-  </search>
-  <!-- Base Search: Unique Originators -->
-  <search id="base_search_originators">
-    <query>base_search | dedup originator | table originator</query>
-  </search>
   <row>
     <panel>
       <title>Available Message Types</title>
       <table>
-        <search base="base_search_message_types">
-          <query></query>
-          <sampleRatio>1</sampleRatio>
+        <search base="base_search">
+          <query>| dedup messageType | table messageType</query>
         </search>
         <option name="count">20</option>
         <option name="dataOverlayMode">none</option>
@@ -49,9 +40,8 @@
     <panel>
       <title>Available Originators</title>
       <table>
-        <search base="base_search_originators">
-          <query></query>
-          <sampleRatio>1</sampleRatio>
+        <search base="base_search">
+          <query>| dedup originator | table originator</query>
         </search>
         <option name="count">20</option>
         <option name="dataOverlayMode">none</option>
@@ -65,28 +55,22 @@
   </row>
   <row>
     <panel>
-      <title>System Data</title>
+      <title>Messages: System Data</title>
       <table>
         <search base="base_search">
           <query>| search messageType="System Data"
 | fields _time messageTime messageType originator _raw</query>
-          <sampleRatio>1</sampleRatio>
-          <refresh>10m</refresh>
-          <refreshType>delay</refreshType>
         </search>
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
       </table>
     </panel>
     <panel>
-      <title>Diagnostic Data</title>
+      <title>Messages: Diagnostic Data</title>
       <table>
         <search base="base_search">
           <query>| search messageType="Diagnostic Data"
 | fields _time messageTime messageType originator _raw</query>
-          <sampleRatio>1</sampleRatio>
-          <refresh>10m</refresh>
-          <refreshType>delay</refreshType>
         </search>
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
@@ -95,7 +79,7 @@
   </row>
   <row>
     <panel>
-      <title>Messages (ats_prod and iams_prod)</title>
+      <title>Messages Viewer by messageType and originator (iams_prod)</title>
       <input type="multiselect" token="messageTypes" searchWhenChanged="true">
         <label>messageType(s)</label>
         <choice value="*">ALL</choice>
@@ -104,8 +88,8 @@
         <suffix>)</suffix>
         <initialValue>*</initialValue>
         <delimiter> </delimiter>
-        <search base="base_search_message_types">
-          <query></query>
+        <search base="base_search">
+          <query>| dedup messageType | table messageType</query>
         </search>
         <fieldForLabel>messageType</fieldForLabel>
         <fieldForValue>messageType</fieldForValue>
@@ -120,8 +104,8 @@
         <suffix>)</suffix>
         <initialValue>*</initialValue>
         <delimiter> </delimiter>
-        <search base="base_search_originators">
-          <query></query>
+        <search base="base_search">
+          <query>| dedup originator | table originator</query>
         </search>
         <fieldForLabel>originator</fieldForLabel>
         <fieldForValue>originator</fieldForValue>
@@ -132,9 +116,6 @@
         <search base="base_search">
           <query>| search (messageType IN $messageTypes$) AND (originator IN $originators$)
 | fields _time messageTime messageType originator _raw</query>
-          <sampleRatio>1</sampleRatio>
-          <refresh>10m</refresh>
-          <refreshType>delay</refreshType>
         </search>
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
@@ -143,7 +124,7 @@
   </row>
   <row>
     <panel>
-      <title>Raw Messages (iams_prod)</title>
+      <title>Raw Messages Search by String (iams_prod)</title>
       <input type="text" token="string" searchWhenChanged="true">
         <label>Search by Text (to exclude prefix with "NOT [string]")</label>
         <default>*</default>
@@ -155,7 +136,6 @@
         <search base="base_search">
           <query>| search $string$ sourcetype="_json"
 | fields _time _raw</query>
-          <sampleRatio>1</sampleRatio>
         </search>
         <option name="count">5</option>
         <option name="list.drilldown">none</option>
