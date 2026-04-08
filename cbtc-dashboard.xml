@@ -17,8 +17,9 @@
 | spath input=_raw path=metadata.messageType output=messageType
 | spath input=_raw path=metadata.originator output=originator
 | spath input=_raw path=metadata.messageTime output=messageTime
-| eval epoch_messageTime=strptime(messageTime, "%Y-%m-%dT%H:%M:%S.%6NZ")
-| fields _time messageTime messageType originator _raw
+| spath input=_raw path=eventCode output=eventCode
+| reconstructmessage
+| fields _time messageTime messageType originator eventCode message_text _raw
 | sort 0 _time
   </query>
     <earliest>$time.earliest$</earliest>
@@ -138,7 +139,7 @@
       <event>
         <search base="base_search">
           <query>| search $string$ sourcetype="_json"
-| fields _time _raw</query>
+          </query>
         </search>
         <option name="count">5</option>
         <option name="list.drilldown">none</option>
